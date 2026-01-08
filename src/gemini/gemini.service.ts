@@ -79,7 +79,7 @@ export class GeminiService {
       }
 
       const buffer = Buffer.from(imageData, 'base64');
-      
+
       const fileName = `${crypto.randomUUID()}.png`;
       const publicDir = path.join(process.cwd(), 'public');
       const imagesDir = path.join(publicDir, 'images');
@@ -102,14 +102,59 @@ export class GeminiService {
       const schema = {
         type: SchemaType.OBJECT,
         properties: {
-          question: { type: SchemaType.STRING },
-          subQuestions: {
-            type: SchemaType.ARRAY,
-            items: { type: SchemaType.STRING },
-          },
           imagePlaceholderPrompt: { type: SchemaType.STRING },
+          questions: {
+            type: SchemaType.ARRAY,
+            items: {
+              type: SchemaType.OBJECT,
+              properties: {
+                questionText: { type: SchemaType.STRING },
+                markingSchema: {
+                  type: SchemaType.ARRAY,
+                  items: { type: SchemaType.STRING },
+                },
+                continueQuestion: { type: SchemaType.STRING },
+                type: { type: SchemaType.STRING },
+                questionType: { type: SchemaType.STRING },
+                contentType: { type: SchemaType.STRING },
+                level2: {
+                  type: SchemaType.ARRAY,
+                  items: {
+                    type: SchemaType.OBJECT,
+                    properties: {
+                      questionText: { type: SchemaType.STRING },
+                      markingSchema: {
+                        type: SchemaType.ARRAY,
+                        items: { type: SchemaType.STRING },
+                      },
+                      continueQuestion: { type: SchemaType.STRING },
+                      level3: {
+                        type: SchemaType.ARRAY,
+                        items: {
+                          type: SchemaType.OBJECT,
+                          properties: {
+                            questionText: { type: SchemaType.STRING },
+                            points: { type: SchemaType.NUMBER },
+                            markingSchema: {
+                              type: SchemaType.ARRAY,
+                              items: { type: SchemaType.STRING },
+                            },
+                            continueQuestion: { type: SchemaType.STRING },
+                            level4: { type: SchemaType.ARRAY, items: { type: SchemaType.STRING } },
+                          },
+                          required: ['questionText', 'points', 'markingSchema', 'continueQuestion', 'level4'],
+                        },
+                      },
+                    },
+                    required: ['questionText', 'markingSchema', 'continueQuestion', 'level3'],
+                  },
+                },
+              },
+              required: ['questionText', 'markingSchema', 'continueQuestion', 'type', 'questionType', 'contentType', 'level2'],
+            },
+          },
         },
-        required: ['question', 'subQuestions', 'imagePlaceholderPrompt'],
+        required: ['imagePlaceholderPrompt', 'questions'],
       } as any;
 
       const model = this.genAI.getGenerativeModel({
@@ -125,13 +170,25 @@ export class GeminiService {
         Generate a structured essay question for a Grade ${grade} student in the subject ${subject}, specifically focusing on the chapter ${chapter}.
         Base the question on the most relevant and accurate information found through Google Search.
         
-        CRITICAL INSTRUCTION:
-        1. First, create a highly descriptive "imagePlaceholderPrompt" for an image generator. 
+        The response must contain:
+        1. "imagePlaceholderPrompt": A highly descriptive prompt for an image generator.
            STYLE REQUIREMENT: The image MUST be described as a black and white (B&W) pencil sketch or line drawing. It should look like a diagram or illustration from a textbook or an academic paper. Avoid realistic or colorful descriptions.
-        2. Then, generate the "question" and "subQuestions" such that they EXPLICLY REFERENCE the sketch defined in your "imagePlaceholderPrompt".
-        3. FINAL STEP FOR imagePlaceholderPrompt: Append the generated "question" and "subQuestions" TO THE END of the "imagePlaceholderPrompt". 
+           FINAL STEP FOR imagePlaceholderPrompt: Append the generated questions TO THE END of the prompt.
            FORMATTING REQUIREMENT: Precede the questions with the label "QUESTIONS_CONTEXT_DO_NOT_RENDER:" and then surround the questions themselves with triple backticks ( \`\`\` ).
-           Example: "...sketch description... QUESTIONS_CONTEXT_DO_NOT_RENDER: \`\`\` <questions here> \`\`\`"
+        
+        2. "questions": An array containing the structured essay question.
+           The "questions" array should follow this exact structure for each object:
+           - questionText: The main question (e.g., "Discuss the impact of...")
+           - markingSchema: An array of strings for marking points.
+           - continueQuestion: An empty string or relevant continuation text.
+           - type: "essay"
+           - questionType: "essay"
+           - contentType: "text"
+           - level2: An array of sub-questions.
+             - Each sub-question should have questionText (without numbering), markingSchema (array), continueQuestion (string), and level3 (array).
+             - level3 objects should have questionText, points (number), markingSchema (array), continueQuestion (string), and level4 (array).
+        
+        Ensure all question parts EXPLICITLY REFERENCE the sketch defined in "imagePlaceholderPrompt".
       `;
 
       const result = await model.generateContent(prompt);
