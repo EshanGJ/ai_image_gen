@@ -3,7 +3,7 @@ import { GeminiService } from './gemini.service';
 
 @Controller('gemini')
 export class GeminiController {
-  constructor(private readonly geminiService: GeminiService) {}
+  constructor(private readonly geminiService: GeminiService) { }
 
   @Post('text')
   async generateText(@Body('prompt') prompt: string) {
@@ -13,8 +13,7 @@ export class GeminiController {
 
   @Post('image')
   async generateImage(@Body('prompt') prompt: string) {
-    const imagePath = await this.geminiService.generateImage(prompt);
-    return { imagePath };
+    return await this.geminiService.generateImage(prompt);
   }
 
   @Post('essay-question')
